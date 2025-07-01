@@ -142,6 +142,44 @@ export class ScheduleAPI {
     }
   }
 
+  // 複数の予定を一括削除
+  static async deleteMultipleSchedules(ids: string[]): Promise<{
+    message: string;
+    deletedCount: number;
+    errors?: string[];
+  }> {
+    console.log('🌐 API: 一括削除リクエスト送信:', { endpoint: '/schedules/bulk', ids });
+    try {
+      const response = await api.delete('/schedules/bulk', {
+        data: { ids }
+      });
+      console.log('✅ API: 一括削除レスポンス:', response.data);
+      return response.data;
+          } catch (error) {
+        console.error('❌ API: 一括削除エラー:', error);
+        if (error && typeof error === 'object' && 'response' in error) {
+          const axiosError = error as any;
+          console.error('❌ API: エラーレスポンス:', axiosError.response?.data);
+          console.error('❌ API: エラーステータス:', axiosError.response?.status);
+        }
+        throw error;
+      }
+  }
+
+  // 全ての予定を削除
+  static async deleteAllSchedules(): Promise<{
+    message: string;
+    deletedCount: number;
+  }> {
+    try {
+      const response = await api.delete('/schedules/all');
+      return response.data;
+    } catch (error) {
+      console.error('全削除エラー:', error);
+      throw error;
+    }
+  }
+
   // サーバーの健康状態をチェック
   static async healthCheck(): Promise<boolean> {
     try {
@@ -160,6 +198,48 @@ export class ScheduleAPI {
       return response.data.data;
     } catch (error) {
       console.error('統計データ取得エラー:', error);
+      throw error;
+    }
+  }
+
+  // データをJSONでエクスポート
+  static async exportJSON(): Promise<Blob> {
+    try {
+      const response = await api.get('/schedules/export/json', {
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      console.error('JSONエクスポートエラー:', error);
+      throw error;
+    }
+  }
+
+  // データをCSVでエクスポート
+  static async exportCSV(): Promise<Blob> {
+    try {
+      const response = await api.get('/schedules/export/csv', {
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      console.error('CSVエクスポートエラー:', error);
+      throw error;
+    }
+  }
+
+  // データをインポート
+  static async importSchedules(schedules: any[]): Promise<{
+    message: string;
+    importedCount: number;
+    errorCount: number;
+    importedSchedules: Schedule[];
+  }> {
+    try {
+      const response = await api.post('/schedules/import', { schedules });
+      return response.data;
+    } catch (error) {
+      console.error('データインポートエラー:', error);
       throw error;
     }
   }

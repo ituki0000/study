@@ -7,6 +7,7 @@ export interface Schedule {
   category: 'work' | 'personal' | 'meeting' | 'reminder' | 'other';
   priority: 'low' | 'medium' | 'high';
   isCompleted: boolean;
+  tags?: string[]; // タグ機能を追加
   createdAt: string;
   updatedAt: string;
   // 繰り返し設定
@@ -25,6 +26,7 @@ export interface CreateScheduleRequest {
   endDate: string;
   category: Schedule['category'];
   priority: Schedule['priority'];
+  tags?: string[]; // タグ機能を追加
   // 繰り返し設定
   repeatType?: Schedule['repeatType'];
   repeatInterval?: number;
@@ -40,6 +42,7 @@ export interface UpdateScheduleRequest {
   category?: Schedule['category'];
   priority?: Schedule['priority'];
   isCompleted?: boolean;
+  tags?: string[]; // タグ機能を追加
 }
 
 export interface ScheduleQuery {
@@ -49,4 +52,5 @@ export interface ScheduleQuery {
   startDate?: string;
   endDate?: string;
   search?: string;
+  tags?: string[]; // タグでのフィルタリング機能を追加
 } 

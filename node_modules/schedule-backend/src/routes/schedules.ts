@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { body, param, query, validationResult } from 'express-validator';
 import { scheduleService } from '../services/scheduleService';
-import { CreateScheduleRequest, UpdateScheduleRequest, ScheduleQuery } from '../types/schedule';
+import { CreateScheduleRequest, UpdateScheduleRequest, ScheduleQuery, Schedule } from '../types/schedule';
 import { dataService } from '../services/dataService';
 
 const router = express.Router();
@@ -215,7 +215,59 @@ router.delete('/:id', [
   }
 });
 
-// POST /api/schedules/import - データのインポート
+// DELETE /api/schedules/bulk - 複数の予定を一括削除
+router.delete('/bulk', [
+  body('ids').isArray({ min: 1 }).withMessage('削除する予定のIDを配列で指定してください'),
+  body('ids.*').isUUID().withMessage('有効なUUIDを指定してください'),
+], handleValidationErrors, (req: Request, res: Response): void => {
+  try {
+    const ids: string[] = req.body.ids;
+    console.log('🔥 Backend: 一括削除リクエスト受信:', { ids, count: ids.length });
+    
+    const result = scheduleService.deleteMultipleSchedules(ids);
+    console.log('✅ Backend: 一括削除結果:', result);
+    
+    if (result.deletedCount === 0) {
+      console.log('❌ Backend: 削除対象が見つからない');
+      res.status(404).json({ 
+        error: '削除対象の予定が見つかりませんでした',
+        errors: result.errors 
+      });
+      return;
+    }
+
+    const message = result.errors.length > 0 
+      ? `${result.deletedCount}件の予定を削除しました（エラー: ${result.errors.length}件）`
+      : `${result.deletedCount}件の予定を正常に削除しました`;
+
+    console.log('🎉 Backend: 一括削除成功:', { message, deletedCount: result.deletedCount });
+    res.json({ 
+      message,
+      deletedCount: result.deletedCount,
+      errors: result.errors
+    });
+  } catch (error) {
+    console.error('❌ Backend: 一括削除エラー:', error);
+    res.status(500).json({ error: '予定の一括削除に失敗しました' });
+  }
+});
+
+// DELETE /api/schedules/all - 全ての予定を削除
+router.delete('/all', (req: Request, res: Response): void => {
+  try {
+    const result = scheduleService.deleteAllSchedules();
+    
+    res.json({ 
+      message: `全ての予定を削除しました（${result.deletedCount}件）`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error('全削除エラー:', error);
+    res.status(500).json({ error: '全ての予定の削除に失敗しました' });
+  }
+});
+
+// POST /api/schedules/import - データのインポート（JSONデータを直接受信）
 router.post('/import', [
   body('schedules').isArray().withMessage('予定データは配列形式で送信してください'),
   body('schedules.*.title').notEmpty().withMessage('タイトルは必須です'),
@@ -224,32 +276,102 @@ router.post('/import', [
 ], handleValidationErrors, (req: Request, res: Response): void => {
   try {
     const schedules = req.body.schedules;
+    const importedSchedules: Schedule[] = [];
+    let successCount = 0;
+    let errorCount = 0;
     
-    // バックアップを作成してからインポート
-    const backupSuccess = dataService.createBackup();
-    if (!backupSuccess) {
-      res.status(500).json({ error: 'バックアップの作成に失敗しました' });
-      return;
+    for (const scheduleData of schedules) {
+      try {
+        // 新しいIDを生成してインポート
+        const newSchedule = scheduleService.createSchedule({
+          title: scheduleData.title,
+          description: scheduleData.description,
+          startDate: scheduleData.startDate,
+          endDate: scheduleData.endDate,
+          category: scheduleData.category || 'other',
+          priority: scheduleData.priority || 'medium',
+          tags: scheduleData.tags || []
+        });
+        
+        importedSchedules.push(newSchedule);
+        successCount++;
+      } catch (error) {
+        errorCount++;
+        console.error('📥 インポートエラー（個別）:', error);
+      }
     }
     
-    // データをインポート
-    const importSuccess = dataService.importData(schedules);
-    if (!importSuccess) {
-      res.status(500).json({ error: 'データのインポートに失敗しました' });
-      return;
-    }
-    
-    // scheduleServiceのデータを再読み込み
-    scheduleService.reloadData();
+    console.log(`📥 ${successCount}件のデータをインポートしました（エラー: ${errorCount}件）`);
     
     res.json({
-      message: `${schedules.length}件の予定をインポートしました`,
-      importedAt: new Date().toISOString(),
-      count: schedules.length
+      message: `${successCount}件のデータをインポートしました`,
+      importedCount: successCount,
+      errorCount: errorCount,
+      importedSchedules: importedSchedules
     });
   } catch (error) {
-    console.error('データインポートエラー:', error);
-    res.status(500).json({ error: 'データのインポートに失敗しました' });
+    console.error('📥 インポートエラー:', error);
+    res.status(500).json({ error: 'インポートに失敗しました' });
+  }
+});
+
+// データエクスポート（JSON形式）
+router.get('/export/json', (req, res) => {
+  try {
+    const schedules = scheduleService.getAllSchedules();
+    const exportData = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      schedules: schedules,
+      totalCount: schedules.length
+    };
+    
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="schedules-export.json"');
+    res.json(exportData);
+  } catch (error) {
+    console.error('📤 エクスポートエラー:', error);
+    res.status(500).json({ error: 'エクスポートに失敗しました' });
+  }
+});
+
+// データエクスポート（CSV形式）
+router.get('/export/csv', (req, res) => {
+  try {
+    const schedules = scheduleService.getAllSchedules();
+    
+    // CSVヘッダー
+    const headers = [
+      'ID', 'タイトル', '説明', '開始日時', '終了日時', 'カテゴリ', '優先度', 
+      '完了状態', 'タグ', '作成日時', '更新日時'
+    ];
+    
+    // CSVデータを作成
+    const csvRows = [
+      headers.join(','),
+      ...schedules.map(schedule => [
+        schedule.id,
+        `"${schedule.title.replace(/"/g, '""')}"`,
+        `"${(schedule.description || '').replace(/"/g, '""')}"`,
+        schedule.startDate,
+        schedule.endDate,
+        schedule.category,
+        schedule.priority,
+        schedule.isCompleted ? '完了' : '未完了',
+        `"${(schedule.tags || []).join(', ')}"`,
+        schedule.createdAt,
+        schedule.updatedAt
+      ].join(','))
+    ];
+    
+    const csvContent = csvRows.join('\n');
+    
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="schedules-export.csv"');
+    res.send('\uFEFF' + csvContent); // BOM付きでUTF-8エンコーディング
+  } catch (error) {
+    console.error('📤 CSVエクスポートエラー:', error);
+    res.status(500).json({ error: 'CSVエクスポートに失敗しました' });
   }
 });
 

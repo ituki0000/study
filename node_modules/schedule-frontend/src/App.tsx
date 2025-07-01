@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CalendarDays, Plus, Filter, Search, AlertCircle, List, Calendar, BarChart3, Bell } from 'lucide-react';
+import { CalendarDays, Plus, Filter, Search, AlertCircle, List, Calendar, BarChart3, Bell, CalendarRange, Database, FileText } from 'lucide-react';
 import { Schedule, ScheduleQuery, CATEGORY_OPTIONS, PRIORITY_OPTIONS } from './types/schedule';
 import { ScheduleAPI } from './services/api';
 import ScheduleList from './components/ScheduleList';
@@ -7,12 +7,16 @@ import ScheduleForm from './components/ScheduleForm';
 import FilterBar from './components/FilterBar';
 import ThemeToggle from './components/ThemeToggle';
 import CalendarView from './components/CalendarView';
+import WeeklyView from './components/WeeklyView';
 // @ts-ignore
 import StatsDashboard from './components/StatsDashboard';
 import NotificationSettings from './components/NotificationSettings';
+import DataManager from './components/DataManager';
+import TemplateManager from './components/TemplateManager';
+import PWAManager from './components/PWAManager';
 import { notificationService } from './services/notificationService';
 
-type ViewType = 'list' | 'calendar' | 'stats';
+type ViewType = 'list' | 'calendar' | 'weekly' | 'stats';
 
 function App() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -25,6 +29,8 @@ function App() {
   const [currentView, setCurrentView] = useState<ViewType>('list');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
+  const [showDataManager, setShowDataManager] = useState(false);
+  const [showTemplateManager, setShowTemplateManager] = useState(false);
 
   // 予定を読み込む
   const loadSchedules = async () => {
@@ -70,6 +76,27 @@ function App() {
       await loadSchedules();
     } catch (err) {
       setError(err instanceof Error ? err.message : '予定の削除に失敗しました');
+    }
+  };
+
+  // 複数の予定を一括削除
+  const handleDeleteMultipleSchedules = async (ids: string[]) => {
+    console.log('🔥 App: 一括削除ハンドラー開始:', ids);
+    try {
+      console.log('📡 App: APIリクエスト送信中...');
+      const result = await ScheduleAPI.deleteMultipleSchedules(ids);
+      console.log('✅ App: API レスポンス受信:', result);
+      
+      console.log('🔄 App: 予定リスト再読み込み中...');
+      await loadSchedules();
+      
+      // 成功メッセージを表示（一時的にerrorステートを使用）
+      setError(`✅ ${result.message}`);
+      setTimeout(() => setError(null), 3000);
+      console.log('🎉 App: 一括削除完了');
+    } catch (err) {
+      console.error('❌ App: 一括削除エラー:', err);
+      setError(err instanceof Error ? err.message : '予定の一括削除に失敗しました');
     }
   };
 
@@ -120,8 +147,20 @@ function App() {
     setCurrentView(view);
   };
 
+  // データインポート後の処理
+  const handleDataImported = async () => {
+    await loadSchedules();
+  };
+
+  // テンプレート使用後の処理
+  const handleTemplateUsed = async (templateId: string, startDate: string) => {
+    await loadSchedules();
+    setShowTemplateManager(false);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+    <PWAManager>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       {/* ヘッダー */}
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -156,6 +195,17 @@ function App() {
                   <Calendar className="h-4 w-4" />
                 </button>
                 <button
+                  onClick={() => handleViewChange('weekly')}
+                  className={`p-2 rounded transition-colors ${
+                    currentView === 'weekly'
+                      ? 'bg-white dark:bg-gray-600 shadow-sm text-primary-600'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+                  title="週表示"
+                >
+                  <CalendarRange className="h-4 w-4" />
+                </button>
+                <button
                   onClick={() => handleViewChange('stats')}
                   className={`p-2 rounded transition-colors ${
                     currentView === 'stats'
@@ -174,6 +224,20 @@ function App() {
                 title="通知設定"
               >
                 <Bell className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setShowDataManager(true)}
+                className="p-2 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title="データ管理"
+              >
+                <Database className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setShowTemplateManager(true)}
+                className="p-2 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title="テンプレート管理"
+              >
+                <FileText className="h-5 w-5" />
               </button>
               <ThemeToggle />
               <button
@@ -237,6 +301,7 @@ function App() {
               loading={loading}
               onEdit={handleEditSchedule}
               onDelete={handleDeleteSchedule}
+              onDeleteMultiple={handleDeleteMultipleSchedules}
               onToggleComplete={handleToggleComplete}
             />
           </div>
@@ -246,6 +311,13 @@ function App() {
             onDateClick={handleCalendarDateClick}
             onScheduleClick={handleCalendarScheduleClick}
             onAddSchedule={() => setShowForm(true)}
+          />
+        ) : currentView === 'weekly' ? (
+          <WeeklyView
+            schedules={schedules}
+            onScheduleClick={handleEditSchedule}
+            onDateClick={handleCalendarDateClick}
+            onToggleComplete={handleToggleComplete}
           />
         ) : (
           <StatsDashboard />
@@ -267,7 +339,22 @@ function App() {
         isOpen={showNotificationSettings}
         onClose={() => setShowNotificationSettings(false)}
       />
-    </div>
+      
+      {/* データ管理 */}
+      <DataManager
+        isOpen={showDataManager}
+        onClose={() => setShowDataManager(false)}
+        onDataImported={handleDataImported}
+      />
+      
+      {/* テンプレート管理 */}
+      <TemplateManager
+        isOpen={showTemplateManager}
+        onClose={() => setShowTemplateManager(false)}
+        onTemplateUsed={handleTemplateUsed}
+      />
+      </div>
+    </PWAManager>
   );
 }
 

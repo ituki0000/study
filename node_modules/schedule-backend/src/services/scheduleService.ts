@@ -1,6 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Schedule, CreateScheduleRequest, UpdateScheduleRequest, ScheduleQuery } from '../types/schedule';
+import { UseTemplateRequest } from '../types/template';
 import { dataService } from './dataService';
+import { templateService } from './templateService';
 
 class ScheduleService {
   private schedules: Schedule[] = [];
@@ -157,6 +159,7 @@ class ScheduleService {
         category: 'meeting',
         priority: 'high',
         isCompleted: false,
+        tags: ['重要', '開発', 'チーム'],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -169,6 +172,7 @@ class ScheduleService {
         category: 'personal',
         priority: 'medium',
         isCompleted: false,
+        tags: ['健康', '定期'],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -200,6 +204,11 @@ class ScheduleService {
         filteredSchedules = filteredSchedules.filter(s => 
           s.title.toLowerCase().includes(searchLower) ||
           (s.description && s.description.toLowerCase().includes(searchLower))
+        );
+      }
+      if (query.tags && query.tags.length > 0) {
+        filteredSchedules = filteredSchedules.filter(s => 
+          s.tags && query.tags!.some(tag => s.tags!.includes(tag))
         );
       }
       if (query.startDate && query.endDate) {
@@ -353,8 +362,16 @@ class ScheduleService {
       category: data.category ?? existingSchedule.category,
       priority: data.priority ?? existingSchedule.priority,
       isCompleted: data.isCompleted ?? existingSchedule.isCompleted,
+      tags: data.tags ?? existingSchedule.tags,
       createdAt: existingSchedule.createdAt,
       updatedAt: new Date().toISOString(),
+      // 繰り返し設定も保持
+      repeatType: existingSchedule.repeatType,
+      repeatInterval: existingSchedule.repeatInterval,
+      repeatEndDate: existingSchedule.repeatEndDate,
+      repeatDays: existingSchedule.repeatDays,
+      parentId: existingSchedule.parentId,
+      isRecurring: existingSchedule.isRecurring,
     };
 
     this.schedules[index] = updatedSchedule;
@@ -371,6 +388,99 @@ class ScheduleService {
     this.schedules.splice(index, 1);
     this.saveData(); // 自動保存
     return true;
+  }
+
+  // 複数の予定を一括削除
+  deleteMultipleSchedules(ids: string[]): { deletedCount: number; errors: string[] } {
+    let deletedCount = 0;
+    const errors: string[] = [];
+
+    for (const id of ids) {
+      const index = this.schedules.findIndex(s => s.id === id);
+      if (index !== -1) {
+        this.schedules.splice(index, 1);
+        deletedCount++;
+      } else {
+        errors.push(`予定ID "${id}" が見つかりません`);
+      }
+    }
+
+    if (deletedCount > 0) {
+      this.saveData(); // 一括で保存
+    }
+
+    return { deletedCount, errors };
+  }
+
+  // 全ての予定を削除
+  deleteAllSchedules(): { deletedCount: number } {
+    const deletedCount = this.schedules.length;
+    this.schedules = [];
+    this.saveData(); // 保存
+    
+    console.log(`🗑️ 全ての予定を削除しました（${deletedCount}件）`);
+    return { deletedCount };
+  }
+
+  // テンプレートから予定を作成
+  createScheduleFromTemplate(data: UseTemplateRequest): Schedule {
+    const template = templateService.getTemplateById(data.templateId);
+    if (!template) {
+      throw new Error('テンプレートが見つかりません');
+    }
+
+    // 開始日時を解析
+    const startDate = new Date(data.startDate);
+    // 終了日時を計算（開始日時 + テンプレートの所要時間）
+    const endDate = new Date(startDate.getTime() + template.duration * 60 * 1000);
+
+    // 予定データを作成（繰り返し設定は無効にして単発の予定として作成）
+    const scheduleData: CreateScheduleRequest = {
+      title: data.title || template.name,
+      description: data.description 
+        ? `${template.description || ''}\n\n${data.description}`.trim()
+        : template.description,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      category: template.category,
+      priority: template.priority,
+      tags: template.tags || [],
+      // テンプレートから作成する際は単発の予定として作成（繰り返し設定は無効）
+      repeatType: 'none',
+      repeatInterval: undefined,
+      repeatDays: undefined
+    };
+
+    // 単発の予定として作成
+    return this.createSchedule(scheduleData);
+  }
+
+  // 予定からテンプレートを作成
+  createTemplateFromSchedule(scheduleId: string, templateName: string): any {
+    const schedule = this.getScheduleById(scheduleId);
+    if (!schedule) {
+      throw new Error('予定が見つかりません');
+    }
+
+    // 所要時間を計算
+    const startTime = new Date(schedule.startDate).getTime();
+    const endTime = new Date(schedule.endDate).getTime();
+    const duration = Math.round((endTime - startTime) / (1000 * 60)); // 分単位
+
+    // テンプレートデータを作成
+    const templateData = {
+      name: templateName,
+      description: schedule.description,
+      category: schedule.category,
+      priority: schedule.priority,
+      duration: duration,
+      tags: schedule.tags,
+      repeatType: schedule.repeatType,
+      repeatInterval: schedule.repeatInterval,
+      repeatDays: schedule.repeatDays
+    };
+
+    return templateService.createTemplate(templateData);
   }
 }
 

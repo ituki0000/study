@@ -1,0 +1,84 @@
+[
+  {
+    "id": "6d706b01-2a42-4e9c-83e9-fab4aed4d862",
+    "name": "定期会議",
+    "description": "チームの定期会議テンプレート",
+    "category": "meeting",
+    "priority": "medium",
+    "duration": 60,
+    "tags": [
+      "会議",
+      "チーム"
+    ],
+    "repeatType": "weekly",
+    "repeatInterval": 1,
+    "repeatDays": [
+      1
+    ],
+    "createdAt": "2025-07-01T06:16:57.000Z",
+    "updatedAt": "2025-07-01T06:16:57.002Z"
+  },
+  {
+    "id": "fc8fd9cb-fa5c-4575-b538-453d7e095439",
+    "name": "1on1面談",
+    "description": "個別面談のテンプレート",
+    "category": "meeting",
+    "priority": "high",
+    "duration": 30,
+    "tags": [
+      "面談",
+      "1on1"
+    ],
+    "repeatType": "weekly",
+    "repeatInterval": 2,
+    "createdAt": "2025-07-01T06:16:57.002Z",
+    "updatedAt": "2025-07-01T06:16:57.002Z"
+  },
+  {
+    "id": "7c79d864-af6f-4e6d-bd63-f47043c88f56",
+    "name": "運動",
+    "description": "定期的な運動の予定",
+    "category": "personal",
+    "priority": "medium",
+    "duration": 45,
+    "tags": [
+      "健康",
+      "運動"
+    ],
+    "repeatType": "daily",
+    "repeatInterval": 1,
+    "createdAt": "2025-07-01T06:16:57.002Z",
+    "updatedAt": "2025-07-01T06:16:57.002Z"
+  },
+  {
+    "id": "4df2875f-7d8e-484d-b6a4-353c704aa911",
+    "name": "月次レポート作成",
+    "description": "月次レポートの作成作業",
+    "category": "work",
+    "priority": "high",
+    "duration": 120,
+    "tags": [
+      "レポート",
+      "月次"
+    ],
+    "repeatType": "monthly",
+    "repeatInterval": 1,
+    "createdAt": "2025-07-01T06:16:57.002Z",
+    "updatedAt": "2025-07-01T06:16:57.002Z"
+  },
+  {
+    "id": "17bff2fe-2071-49a0-ada2-1f147c6c44a0",
+    "name": "歯医者予約",
+    "description": "定期健診の予約テンプレート",
+    "category": "personal",
+    "priority": "medium",
+    "duration": 30,
+    "tags": [
+      "健康",
+      "定期健診"
+    ],
+    "repeatType": "none",
+    "createdAt": "2025-07-01T06:16:57.002Z",
+    "updatedAt": "2025-07-01T06:16:57.002Z"
+  }
+]

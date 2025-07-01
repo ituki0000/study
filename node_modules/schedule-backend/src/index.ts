@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { scheduleRoutes } from './routes/schedules';
+import { templateRoutes } from './routes/templates';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -19,6 +20,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // ルート
 app.use('/api/schedules', scheduleRoutes);
+app.use('/api/templates', templateRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: '予定管理システム API サーバーが正常に動作しています' });

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Filter, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Filter, X, Tag } from 'lucide-react';
 import { ScheduleQuery, CATEGORY_OPTIONS, PRIORITY_OPTIONS } from '../types/schedule';
 
 interface FilterBarProps {
@@ -8,6 +8,7 @@ interface FilterBarProps {
 }
 
 const FilterBar: React.FC<FilterBarProps> = ({ filters, onFiltersChange }) => {
+  const [tagInput, setTagInput] = useState('');
   // フィルターを更新
   const handleFilterChange = (key: keyof ScheduleQuery, value: any) => {
     const newFilters = { ...filters };
@@ -22,6 +23,32 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, onFiltersChange }) => {
   // 全フィルターをクリア
   const clearAllFilters = () => {
     onFiltersChange({});
+  };
+
+  // タグフィルターを追加
+  const handleAddTagFilter = () => {
+    const tag = tagInput.trim();
+    if (tag && (!filters.tags || !filters.tags.includes(tag))) {
+      const newTags = filters.tags ? [...filters.tags, tag] : [tag];
+      handleFilterChange('tags', newTags);
+      setTagInput('');
+    }
+  };
+
+  // タグフィルターを削除
+  const handleRemoveTagFilter = (tagToRemove: string) => {
+    if (filters.tags) {
+      const newTags = filters.tags.filter(tag => tag !== tagToRemove);
+      handleFilterChange('tags', newTags.length > 0 ? newTags : undefined);
+    }
+  };
+
+  // Enterキーでタグフィルター追加
+  const handleTagKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTagFilter();
+    }
   };
 
   // アクティブなフィルター数を計算
@@ -53,7 +80,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, onFiltersChange }) => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* カテゴリフィルター */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -164,6 +191,50 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, onFiltersChange }) => {
             )}
           </select>
         </div>
+
+        {/* タグフィルター */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            タグ
+          </label>
+          <div className="flex space-x-1">
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyPress={handleTagKeyPress}
+              className="input-field text-sm flex-1"
+              placeholder="タグを入力"
+              maxLength={20}
+            />
+            <button
+              type="button"
+              onClick={handleAddTagFilter}
+              disabled={!tagInput.trim()}
+              className="px-2 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Tag className="h-4 w-4" />
+            </button>
+          </div>
+          {filters.tags && filters.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {filters.tags.map((tag, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
+                >
+                  {tag}
+                  <button
+                    onClick={() => handleRemoveTagFilter(tag)}
+                    className="ml-1 hover:text-primary-600 dark:hover:text-primary-300"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* アクティブなフィルターを表示 */}
@@ -216,6 +287,25 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, onFiltersChange }) => {
                   <X className="h-3 w-3" />
                 </button>
               </span>
+            )}
+            {filters.tags && filters.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {filters.tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-200"
+                  >
+                    <Tag className="h-3 w-3 mr-1" />
+                    {tag}
+                    <button
+                      onClick={() => handleRemoveTagFilter(tag)}
+                      className="ml-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         </div>

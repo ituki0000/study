@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Calendar } from 'lucide-react';
+import { X, Save, Calendar, Tag, Plus } from 'lucide-react';
 import { Schedule, CreateScheduleRequest, UpdateScheduleRequest, CATEGORY_OPTIONS, PRIORITY_OPTIONS, REPEAT_OPTIONS, WEEKDAY_OPTIONS } from '../types/schedule';
 import { ScheduleAPI } from '../services/api';
 
@@ -23,12 +23,14 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
     endDate: '',
     category: 'work' as Schedule['category'],
     priority: 'medium' as Schedule['priority'],
+    tags: [] as string[],
     // 繰り返し設定
     repeatType: 'none' as Schedule['repeatType'],
     repeatInterval: 1,
     repeatEndDate: '',
     repeatDays: [] as number[],
   });
+  const [newTag, setNewTag] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +44,7 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
         endDate: schedule.endDate.slice(0, 16),
         category: schedule.category,
         priority: schedule.priority,
+        tags: schedule.tags || [],
         // 繰り返し設定
         repeatType: schedule.repeatType || 'none',
         repeatInterval: schedule.repeatInterval || 1,
@@ -70,6 +73,7 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
         endDate: endTime.toISOString().slice(0, 16),
         category: 'work',
         priority: 'medium',
+        tags: [],
         // 繰り返し設定
         repeatType: 'none',
         repeatInterval: 1,
@@ -102,6 +106,34 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
     // エラーをクリア
     if (error) setError(null);
+  };
+
+  // タグ追加
+  const handleAddTag = () => {
+    const tag = newTag.trim();
+    if (tag && !formData.tags.includes(tag)) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...prev.tags, tag],
+      }));
+      setNewTag('');
+    }
+  };
+
+  // タグ削除
+  const handleRemoveTag = (tagToRemove: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove),
+    }));
+  };
+
+  // Enterキーでタグ追加
+  const handleTagKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTag();
+    }
   };
 
   // バリデーション
@@ -148,6 +180,7 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
         endDate: new Date(formData.endDate).toISOString(),
         category: formData.category,
         priority: formData.priority,
+        tags: formData.tags.length > 0 ? formData.tags : undefined,
         // 繰り返し設定
         repeatType: formData.repeatType,
         repeatInterval: formData.repeatType !== 'none' ? formData.repeatInterval : undefined,
@@ -309,6 +342,58 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* タグ */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              タグ
+            </label>
+            
+            {/* 既存タグの表示 */}
+            {formData.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {formData.tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-400"
+                  >
+                    <Tag className="h-3 w-3 mr-1" />
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTag(tag)}
+                      className="ml-2 hover:text-primary-600 dark:hover:text-primary-300"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            
+            {/* タグ追加入力 */}
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyPress={handleTagKeyPress}
+                className="input-field flex-1"
+                placeholder="タグを入力してEnterキーで追加"
+                maxLength={20}
+              />
+              <button
+                type="button"
+                onClick={handleAddTag}
+                className="px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              タグは検索やフィルタリングに便利です
+            </p>
           </div>
 
           {/* 繰り返し設定 */}
