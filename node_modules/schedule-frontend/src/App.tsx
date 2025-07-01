@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CalendarDays, Plus, Filter, Search, AlertCircle, List, Calendar } from 'lucide-react';
+import { CalendarDays, Plus, Filter, Search, AlertCircle, List, Calendar, BarChart3, Bell } from 'lucide-react';
 import { Schedule, ScheduleQuery, CATEGORY_OPTIONS, PRIORITY_OPTIONS } from './types/schedule';
 import { ScheduleAPI } from './services/api';
 import ScheduleList from './components/ScheduleList';
@@ -7,8 +7,12 @@ import ScheduleForm from './components/ScheduleForm';
 import FilterBar from './components/FilterBar';
 import ThemeToggle from './components/ThemeToggle';
 import CalendarView from './components/CalendarView';
+// @ts-ignore
+import StatsDashboard from './components/StatsDashboard';
+import NotificationSettings from './components/NotificationSettings';
+import { notificationService } from './services/notificationService';
 
-type ViewType = 'list' | 'calendar';
+type ViewType = 'list' | 'calendar' | 'stats';
 
 function App() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -20,6 +24,7 @@ function App() {
   const [filters, setFilters] = useState<ScheduleQuery>({});
   const [currentView, setCurrentView] = useState<ViewType>('list');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
 
   // 予定を読み込む
   const loadSchedules = async () => {
@@ -32,6 +37,9 @@ function App() {
       };
       const data = await ScheduleAPI.getAllSchedules(query);
       setSchedules(data);
+      
+      // 通知をスケジュール
+      notificationService.rescheduleAllNotifications(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : '予定の読み込みに失敗しました');
     } finally {
@@ -147,8 +155,26 @@ function App() {
                 >
                   <Calendar className="h-4 w-4" />
                 </button>
+                <button
+                  onClick={() => handleViewChange('stats')}
+                  className={`p-2 rounded transition-colors ${
+                    currentView === 'stats'
+                      ? 'bg-white dark:bg-gray-600 shadow-sm text-primary-600'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+                  title="統計表示"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                </button>
               </div>
 
+              <button
+                onClick={() => setShowNotificationSettings(true)}
+                className="p-2 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title="通知設定"
+              >
+                <Bell className="h-5 w-5" />
+              </button>
               <ThemeToggle />
               <button
                 onClick={() => setShowForm(true)}
@@ -214,13 +240,15 @@ function App() {
               onToggleComplete={handleToggleComplete}
             />
           </div>
-        ) : (
+        ) : currentView === 'calendar' ? (
           <CalendarView
             schedules={schedules}
             onDateClick={handleCalendarDateClick}
             onScheduleClick={handleCalendarScheduleClick}
             onAddSchedule={() => setShowForm(true)}
           />
+        ) : (
+          <StatsDashboard />
         )}
       </main>
 
@@ -233,6 +261,12 @@ function App() {
           onCancel={handleCloseForm}
         />
       )}
+      
+      {/* 通知設定 */}
+      <NotificationSettings
+        isOpen={showNotificationSettings}
+        onClose={() => setShowNotificationSettings(false)}
+      />
     </div>
   );
 }

@@ -1,6 +1,55 @@
 import axios from 'axios';
 import { Schedule, CreateScheduleRequest, UpdateScheduleRequest, ScheduleQuery, ApiResponse } from '../types/schedule';
 
+// 統計データの型定義
+export interface AnalyticsData {
+  summary: {
+    total: number;
+    completed: number;
+    completionRate: number;
+    overdue: number;
+    today: {
+      total: number;
+      completed: number;
+      remaining: number;
+    };
+    thisWeek: {
+      total: number;
+      completed: number;
+      remaining: number;
+    };
+    thisMonth: {
+      total: number;
+      completed: number;
+      remaining: number;
+    };
+  };
+  categoryDistribution: {
+    work: number;
+    personal: number;
+    meeting: number;
+    reminder: number;
+    other: number;
+  };
+  priorityDistribution: {
+    high: number;
+    medium: number;
+    low: number;
+  };
+  completionTrend: Array<{
+    date: string;
+    total: number;
+    completed: number;
+    completionRate: number;
+  }>;
+  monthlyTrend: Array<{
+    month: string;
+    count: number;
+    completed: number;
+  }>;
+  generatedAt: string;
+}
+
 const API_BASE_URL = '/api';
 
 // Axios インスタンスを作成
@@ -101,6 +150,17 @@ export class ScheduleAPI {
     } catch (error) {
       console.error('サーバー接続エラー:', error);
       return false;
+    }
+  }
+
+  // 統計データを取得
+  static async getAnalytics(): Promise<AnalyticsData> {
+    try {
+      const response = await api.get<ApiResponse<AnalyticsData>>('/schedules/analytics');
+      return response.data.data;
+    } catch (error) {
+      console.error('統計データ取得エラー:', error);
+      throw error;
     }
   }
 } 

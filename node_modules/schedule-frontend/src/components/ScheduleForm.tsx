@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Calendar } from 'lucide-react';
-import { Schedule, CreateScheduleRequest, UpdateScheduleRequest, CATEGORY_OPTIONS, PRIORITY_OPTIONS } from '../types/schedule';
+import { Schedule, CreateScheduleRequest, UpdateScheduleRequest, CATEGORY_OPTIONS, PRIORITY_OPTIONS, REPEAT_OPTIONS, WEEKDAY_OPTIONS } from '../types/schedule';
 import { ScheduleAPI } from '../services/api';
 
 interface ScheduleFormProps {
@@ -23,6 +23,11 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
     endDate: '',
     category: 'work' as Schedule['category'],
     priority: 'medium' as Schedule['priority'],
+    // 繰り返し設定
+    repeatType: 'none' as Schedule['repeatType'],
+    repeatInterval: 1,
+    repeatEndDate: '',
+    repeatDays: [] as number[],
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +42,11 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
         endDate: schedule.endDate.slice(0, 16),
         category: schedule.category,
         priority: schedule.priority,
+        // 繰り返し設定
+        repeatType: schedule.repeatType || 'none',
+        repeatInterval: schedule.repeatInterval || 1,
+        repeatEndDate: schedule.repeatEndDate ? schedule.repeatEndDate.slice(0, 10) : '',
+        repeatDays: schedule.repeatDays || [],
       });
     } else {
       // 新規作成の場合
@@ -60,6 +70,11 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
         endDate: endTime.toISOString().slice(0, 16),
         category: 'work',
         priority: 'medium',
+        // 繰り返し設定
+        repeatType: 'none',
+        repeatInterval: 1,
+        repeatEndDate: '',
+        repeatDays: [],
       });
     }
   }, [schedule, selectedDate]);
@@ -69,7 +84,20 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: name === 'repeatInterval' ? parseInt(value) || 1 : value,
+    }));
+
+    // エラーをクリア
+    if (error) setError(null);
+  };
+
+  // 繰り返し曜日の選択
+  const handleRepeatDaysChange = (day: number) => {
+    setFormData(prev => ({
+      ...prev,
+      repeatDays: prev.repeatDays.includes(day)
+        ? prev.repeatDays.filter(d => d !== day)
+        : [...prev.repeatDays, day].sort(),
     }));
 
     // エラーをクリア
@@ -120,6 +148,15 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
         endDate: new Date(formData.endDate).toISOString(),
         category: formData.category,
         priority: formData.priority,
+        // 繰り返し設定
+        repeatType: formData.repeatType,
+        repeatInterval: formData.repeatType !== 'none' ? formData.repeatInterval : undefined,
+        repeatEndDate: formData.repeatType !== 'none' && formData.repeatEndDate 
+          ? new Date(formData.repeatEndDate).toISOString() 
+          : undefined,
+        repeatDays: formData.repeatType === 'weekly' && formData.repeatDays.length > 0 
+          ? formData.repeatDays 
+          : undefined,
       };
 
       if (schedule) {
@@ -272,6 +309,103 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* 繰り返し設定 */}
+          <div className="border-t pt-4 border-gray-200 dark:border-gray-700">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">繰り返し設定</h3>
+            
+            {/* 繰り返しタイプ */}
+            <div className="mb-3">
+              <label htmlFor="repeatType" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                繰り返し
+              </label>
+              <select
+                id="repeatType"
+                name="repeatType"
+                value={formData.repeatType}
+                onChange={handleChange}
+                className="select-field"
+              >
+                {REPEAT_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 繰り返し間隔 */}
+            {formData.repeatType !== 'none' && (
+              <div className="mb-3">
+                <label htmlFor="repeatInterval" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  間隔
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    id="repeatInterval"
+                    name="repeatInterval"
+                    value={formData.repeatInterval}
+                    onChange={handleChange}
+                    min="1"
+                    max="100"
+                    className="input-field w-20"
+                  />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {formData.repeatType === 'daily' && '日毎'}
+                    {formData.repeatType === 'weekly' && '週毎'}
+                    {formData.repeatType === 'monthly' && 'ヶ月毎'}
+                    {formData.repeatType === 'yearly' && '年毎'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* 曜日選択（週間繰り返しの場合のみ） */}
+            {formData.repeatType === 'weekly' && (
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  繰り返す曜日
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {WEEKDAY_OPTIONS.map(option => (
+                    <label
+                      key={option.value}
+                      className="flex items-center space-x-1 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.repeatDays.includes(option.value)}
+                        onChange={() => handleRepeatDaysChange(option.value)}
+                        className="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        {option.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 繰り返し終了日 */}
+            {formData.repeatType !== 'none' && (
+              <div className="mb-3">
+                <label htmlFor="repeatEndDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  繰り返し終了日（任意）
+                </label>
+                <input
+                  type="date"
+                  id="repeatEndDate"
+                  name="repeatEndDate"
+                  value={formData.repeatEndDate}
+                  onChange={handleChange}
+                  className="input-field"
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+            )}
           </div>
 
           {/* ボタン */}

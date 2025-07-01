@@ -16,6 +16,49 @@ const handleValidationErrors = (req: Request, res: Response, next: NextFunction)
   next();
 };
 
+// GET /api/schedules/export - データのエクスポート
+router.get('/export', (req: Request, res: Response): void => {
+  try {
+    const schedules = dataService.exportData();
+    const stats = dataService.getDataStats();
+    
+    res.json({
+      data: schedules,
+      exportedAt: new Date().toISOString(),
+      stats: stats,
+      message: `${schedules.length}件の予定をエクスポートしました`
+    });
+  } catch (error) {
+    console.error('データエクスポートエラー:', error);
+    res.status(500).json({ error: 'データのエクスポートに失敗しました' });
+  }
+});
+
+// GET /api/schedules/stats - データ統計情報
+router.get('/stats', (req: Request, res: Response): void => {
+  try {
+    const stats = dataService.getDataStats();
+    res.json({ data: stats });
+  } catch (error) {
+    console.error('統計情報取得エラー:', error);
+    res.status(500).json({ error: '統計情報の取得に失敗しました' });
+  }
+});
+
+// GET /api/schedules/analytics - 詳細分析データ
+router.get('/analytics', (req: Request, res: Response): void => {
+  try {
+    const analytics = scheduleService.getStatistics();
+    res.json({ 
+      data: analytics,
+      message: '分析データを取得しました' 
+    });
+  } catch (error) {
+    console.error('分析データ取得エラー:', error);
+    res.status(500).json({ error: '分析データの取得に失敗しました' });
+  }
+});
+
 // GET /api/schedules - 全予定を取得
 router.get('/', [
   query('category').optional().isIn(['work', 'personal', 'meeting', 'reminder', 'other']),
@@ -172,24 +215,6 @@ router.delete('/:id', [
   }
 });
 
-// GET /api/schedules/export - データのエクスポート
-router.get('/export', (req: Request, res: Response): void => {
-  try {
-    const schedules = dataService.exportData();
-    const stats = dataService.getDataStats();
-    
-    res.json({
-      data: schedules,
-      exportedAt: new Date().toISOString(),
-      stats: stats,
-      message: `${schedules.length}件の予定をエクスポートしました`
-    });
-  } catch (error) {
-    console.error('データエクスポートエラー:', error);
-    res.status(500).json({ error: 'データのエクスポートに失敗しました' });
-  }
-});
-
 // POST /api/schedules/import - データのインポート
 router.post('/import', [
   body('schedules').isArray().withMessage('予定データは配列形式で送信してください'),
@@ -225,17 +250,6 @@ router.post('/import', [
   } catch (error) {
     console.error('データインポートエラー:', error);
     res.status(500).json({ error: 'データのインポートに失敗しました' });
-  }
-});
-
-// GET /api/schedules/stats - データ統計情報
-router.get('/stats', (req: Request, res: Response): void => {
-  try {
-    const stats = dataService.getDataStats();
-    res.json({ data: stats });
-  } catch (error) {
-    console.error('統計情報取得エラー:', error);
-    res.status(500).json({ error: '統計情報の取得に失敗しました' });
   }
 });
 
