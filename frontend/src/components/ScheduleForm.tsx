@@ -5,12 +5,14 @@ import { ScheduleAPI } from '../services/api';
 
 interface ScheduleFormProps {
   schedule?: Schedule | null;
+  selectedDate?: Date | null;
   onSubmit: () => void;
   onCancel: () => void;
 }
 
 const ScheduleForm: React.FC<ScheduleFormProps> = ({
   schedule,
+  selectedDate,
   onSubmit,
   onCancel,
 }) => {
@@ -37,20 +39,30 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
         priority: schedule.priority,
       });
     } else {
-      // 新規作成の場合、現在時刻から1時間後をデフォルトに設定
-      const now = new Date();
-      const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+      // 新規作成の場合
+      let startTime: Date;
+      
+      if (selectedDate) {
+        // カレンダーから日付が選択されている場合
+        startTime = new Date(selectedDate);
+        startTime.setHours(9, 0, 0, 0); // 午前9時に設定
+      } else {
+        // 通常の新規作成の場合、現在時刻を使用
+        startTime = new Date();
+      }
+      
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1時間後
       
       setFormData({
         title: '',
         description: '',
-        startDate: now.toISOString().slice(0, 16),
-        endDate: oneHourLater.toISOString().slice(0, 16),
+        startDate: startTime.toISOString().slice(0, 16),
+        endDate: endTime.toISOString().slice(0, 16),
         category: 'work',
         priority: 'medium',
       });
     }
-  }, [schedule]);
+  }, [schedule, selectedDate]);
 
   // フォームデータの更新
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -128,18 +140,18 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto transition-colors">
         {/* ヘッダー */}
-        <div className="flex items-center justify-between p-6 border-b">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-2">
             <Calendar className="h-5 w-5 text-primary-600" />
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               {schedule ? '予定を編集' : '新しい予定'}
             </h2>
           </div>
           <button
             onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
           >
             <X className="h-6 w-6" />
           </button>
@@ -149,14 +161,14 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* エラー表示 */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-3">
-              <p className="text-red-800 text-sm">{error}</p>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
+              <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
             </div>
           )}
 
           {/* タイトル */}
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               タイトル <span className="text-red-500">*</span>
             </label>
             <input
@@ -174,7 +186,7 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
           {/* 説明 */}
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               説明
             </label>
             <textarea
@@ -191,7 +203,7 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
           {/* 開始日時 */}
           <div>
-            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               開始日時 <span className="text-red-500">*</span>
             </label>
             <input
@@ -207,7 +219,7 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
           {/* 終了日時 */}
           <div>
-            <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               終了日時 <span className="text-red-500">*</span>
             </label>
             <input
@@ -224,7 +236,7 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
           {/* カテゴリと優先度 */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 カテゴリ
               </label>
               <select
@@ -243,7 +255,7 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({
             </div>
             
             <div>
-              <label htmlFor="priority" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="priority" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 優先度
               </label>
               <select

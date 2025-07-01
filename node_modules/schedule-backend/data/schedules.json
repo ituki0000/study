@@ -1,0 +1,26 @@
+[
+  {
+    "id": "808c3c08-116f-4d80-a609-688051b0e4e5",
+    "title": "プロジェクト会議",
+    "description": "新機能について議論",
+    "startDate": "2025-07-02T04:47:04.348Z",
+    "endDate": "2025-07-02T05:47:04.349Z",
+    "category": "meeting",
+    "priority": "high",
+    "isCompleted": false,
+    "createdAt": "2025-07-01T04:47:04.349Z",
+    "updatedAt": "2025-07-01T04:47:04.349Z"
+  },
+  {
+    "id": "efb9702b-2b6a-4b5e-a093-6f49c1ef34d2",
+    "title": "歯医者の予約",
+    "description": "定期検診",
+    "startDate": "2025-07-03T04:47:04.349Z",
+    "endDate": "2025-07-03T05:17:04.349Z",
+    "category": "personal",
+    "priority": "medium",
+    "isCompleted": false,
+    "createdAt": "2025-07-01T04:47:04.349Z",
+    "updatedAt": "2025-07-01T04:47:04.349Z"
+  }
+]

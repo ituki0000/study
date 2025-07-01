@@ -1,12 +1,28 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Schedule, CreateScheduleRequest, UpdateScheduleRequest, ScheduleQuery } from '../types/schedule';
+import { dataService } from './dataService';
 
 class ScheduleService {
   private schedules: Schedule[] = [];
 
   constructor() {
-    // デモデータを初期化
-    this.initializeDemoData();
+    // 保存されたデータを読み込み
+    this.loadData();
+  }
+
+  private loadData(): void {
+    this.schedules = dataService.loadSchedules();
+    
+    // データが空の場合はデモデータを作成
+    if (this.schedules.length === 0) {
+      console.log('💡 初回起動のため、デモデータを作成します');
+      this.initializeDemoData();
+    }
+  }
+
+  // 外部からデータを再読み込みする際に使用
+  public reloadData(): void {
+    this.loadData();
   }
 
   private initializeDemoData(): void {
@@ -38,6 +54,11 @@ class ScheduleService {
     ];
 
     this.schedules = demoSchedules;
+    this.saveData(); // デモデータを保存
+  }
+
+  private saveData(): void {
+    dataService.saveSchedules(this.schedules);
   }
 
   getAllSchedules(query?: ScheduleQuery): Schedule[] {
@@ -87,6 +108,7 @@ class ScheduleService {
     };
 
     this.schedules.push(newSchedule);
+    this.saveData(); // 自動保存
     return newSchedule;
   }
 
@@ -115,6 +137,7 @@ class ScheduleService {
     };
 
     this.schedules[index] = updatedSchedule;
+    this.saveData(); // 自動保存
     return updatedSchedule;
   }
 
@@ -125,6 +148,7 @@ class ScheduleService {
     }
 
     this.schedules.splice(index, 1);
+    this.saveData(); // 自動保存
     return true;
   }
 }

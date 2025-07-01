@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import { body, param, query, validationResult } from 'express-validator';
 import { scheduleService } from '../services/scheduleService';
 import { CreateScheduleRequest, UpdateScheduleRequest, ScheduleQuery } from '../types/schedule';
+import { dataService } from '../services/dataService';
 
 const router = express.Router();
 
@@ -168,6 +169,73 @@ router.delete('/:id', [
   } catch (error) {
     console.error('予定削除エラー:', error);
     res.status(500).json({ error: '予定の削除に失敗しました' });
+  }
+});
+
+// GET /api/schedules/export - データのエクスポート
+router.get('/export', (req: Request, res: Response): void => {
+  try {
+    const schedules = dataService.exportData();
+    const stats = dataService.getDataStats();
+    
+    res.json({
+      data: schedules,
+      exportedAt: new Date().toISOString(),
+      stats: stats,
+      message: `${schedules.length}件の予定をエクスポートしました`
+    });
+  } catch (error) {
+    console.error('データエクスポートエラー:', error);
+    res.status(500).json({ error: 'データのエクスポートに失敗しました' });
+  }
+});
+
+// POST /api/schedules/import - データのインポート
+router.post('/import', [
+  body('schedules').isArray().withMessage('予定データは配列形式で送信してください'),
+  body('schedules.*.title').notEmpty().withMessage('タイトルは必須です'),
+  body('schedules.*.startDate').isISO8601().withMessage('開始日時は正しい形式で入力してください'),
+  body('schedules.*.endDate').isISO8601().withMessage('終了日時は正しい形式で入力してください'),
+], handleValidationErrors, (req: Request, res: Response): void => {
+  try {
+    const schedules = req.body.schedules;
+    
+    // バックアップを作成してからインポート
+    const backupSuccess = dataService.createBackup();
+    if (!backupSuccess) {
+      res.status(500).json({ error: 'バックアップの作成に失敗しました' });
+      return;
+    }
+    
+    // データをインポート
+    const importSuccess = dataService.importData(schedules);
+    if (!importSuccess) {
+      res.status(500).json({ error: 'データのインポートに失敗しました' });
+      return;
+    }
+    
+    // scheduleServiceのデータを再読み込み
+    scheduleService.reloadData();
+    
+    res.json({
+      message: `${schedules.length}件の予定をインポートしました`,
+      importedAt: new Date().toISOString(),
+      count: schedules.length
+    });
+  } catch (error) {
+    console.error('データインポートエラー:', error);
+    res.status(500).json({ error: 'データのインポートに失敗しました' });
+  }
+});
+
+// GET /api/schedules/stats - データ統計情報
+router.get('/stats', (req: Request, res: Response): void => {
+  try {
+    const stats = dataService.getDataStats();
+    res.json({ data: stats });
+  } catch (error) {
+    console.error('統計情報取得エラー:', error);
+    res.status(500).json({ error: '統計情報の取得に失敗しました' });
   }
 });
 
